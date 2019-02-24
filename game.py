@@ -6,6 +6,7 @@ import tflearn
 import numpy as np
 import QCOPY as ql
 import time
+import random
 
 class Game:
     r = False
@@ -46,38 +47,74 @@ class Game:
                 print("E")
 
         def learn(dt,batch):
-            for episode in range(100):
-                player_car.reset(200,200)
-                distance = player_car.getDistance()
-                speed = player_car.getSpeed()
-                done = False
-                
-                while True:
-                    action = RL.choose_action(str(distance))
-                    
-                    player_car.action(action)
-                    update(1/144,batch)
-                    player_car.actionreset()
-                    
-                    reward = player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5
-                    _distance = player_car.getDistance()
-                    _speed = player_car.getSpeed()
-                    if(distance>1000 or reward>10):
-                        done = True
-                    else:
-                        done = False
-                    
-                    print(action)
-                    print(distance)
-                    print(reward)
+            with tf.Session() as sess:
+                sess.run(self.init)
+                for i in range(self.num_episodes):
+                    player_car.reset(200,200)
+                    distance = player_car.getDistance()
+                    speed = player_car.getSpeed()
+                    rotationspeed = player_car.getRotationSpeed()
+                    rotation = player_car.getRotation()
+                    s = np.array([distance, speed, rotationspeed, rotation])
+                    s = s.reshape(1,4)
+                    rAll = 0
+                    d = False
+                    j = 0
 
-                    RL.learn(str(distance),action,reward, str(_distance))
+                    while j < 4000:
+                        j+=1
+                        
+                        a,allQ = sess.run([self.predict, self.Qout], feed_dict = {self.inputs1:s})
+                        if np.random.rand(1)<self.e:
+                            a[0] = random.randint(0,4)# random action
+                        
 
-                    distance = _distance
-                    speed = _speed
+                        player_car.action(a[0])
+                        updateh(1/144,batch)
+                        player_car.actionreset()
 
-                    if done:
-                        break
+                        _distance = player_car.getDistance()
+                        _speed = player_car.getSpeed()
+                        _rotationspeed = player_car.getRotationSpeed()
+                        _rotation = player_car.getRotation()
+                        s1 = np.array([_distance, _speed, _rotationspeed, _rotation])
+                        s1 = s1.reshape(1,4)
+
+                        
+
+                        #r = player_car.getScore()
+                        r = player_car.getScore() - self.score
+                        self.score = player_car.getScore()
+
+                        d = False
+                        if(distance>100 or r > 10):
+                            d = True
+                        if(j%100==0):
+                            print(sess.run(self.W))
+                            print(a,allQ,self.predict, self.Qout,self.nextQ,s,self.W)
+                            print(round(distance,2),round(r,2),round(self.score,2),i,j)
+
+                        Q1 = sess.run(self.Qout,feed_dict={self.inputs1:s1})
+                        maxQ1 = np.max(Q1)
+                        targetQ = allQ
+                        targetQ[0,a[0]] = r + self.y*maxQ1
+
+                        _,W1 = sess.run([self.updateModel,self.W], feed_dict={self.inputs1:s,self.nextQ:targetQ})
+                        rAll += r
+                        distance = _distance
+                        speed = _speed
+                        rotationspeed = _rotationspeed
+                        rotation = _rotation
+                        s = s1
+                        if d==True:
+                            self.e = 1./((i/50)+10)
+                            break
+                    self.jList.append(j)
+                    self.rList.append(rAll)
+            print("Percent of succesful episodes: " + str(sum(self.rList)/self.num_episodes) + "%")
+
+
+            
 
                     
 
@@ -123,7 +160,29 @@ class Game:
             
 
         
-        RL = ql.QLearningTable(actions=['u','d','l','r','n'])
-        pyglet.clock.schedule_interval(update,1/144.0,batch)
-        #pyglet.clock.schedule_once(learn,1/144.0,batch)
+        #RL = ql.QLearningTable(actions=['u','d','l','r','n'])
+        tf.reset_default_graph()
+        self.inputs1 = tf.placeholder(shape=[1,4], dtype = tf.float32)
+        self.W = tf.Variable(tf.random_uniform([4,5],0,1))
+        self.Qout = tf.matmul(self.inputs1,self.W)
+        self.predict = tf.argmax(self.Qout,1)
+
+
+        self.nextQ = tf.placeholder(shape=[1,5],dtype = tf.float32)
+        self.nextQ = tf.Print(self.nextQ,[self.nextQ],"nextQ: ")
+        loss = tf.reduce_sum(tf.square(self.nextQ-self.Qout)+1e50)
+        trainer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
+        self.updateModel = trainer.minimize(loss)
+        self.init = tf.global_variables_initializer()
+        print(self.predict)
+
+        self.y = .99
+        self.e = .1
+        self.num_episodes = 500
+        self.jList = []
+        self.rList = []
+
+
+        #pyglet.clock.schedule_interval(update,1/144.0,batch)
+        pyglet.clock.schedule_once(learn,1/144.0,batch)
         pyglet.app.run()
