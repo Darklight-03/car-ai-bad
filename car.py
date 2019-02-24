@@ -7,11 +7,27 @@ class Car(PhysicalObject):
     keys = dict(left=False,right=False,up=False,down=False)
     rotations = 0
     score = 0
+    dt = 0
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         u = [math.cos(self.rotation), math.sin(self.rotation)]
         self.lines = kwargs['batch'].add(2, pyglet.gl.GL_LINES, None, ('v2d',(self.x,self.y,self.x+(u[0]*500),self.y+(u[1]*500))))
 
+    def action(self,action):
+        if(action == 'u'):
+            self.keys['up']=True
+        elif(action == 'l'):
+            self.keys['left']=True
+        elif(action == 'r'):
+            self.keys['right']=True
+        elif(action == 'd'):
+            self.keys['down']=True
+
+    def actionreset(self):
+        self.keys['up']=False
+        self.keys['left']=False
+        self.keys['right']=False
+        self.keys['down']=False
 
     def on_key_press(self,symbol,modifiers):
         if(symbol == key.UP):
@@ -47,7 +63,7 @@ class Car(PhysicalObject):
             engineforce += CAR_ENGINE_FORCE
         if(self.keys['down']):
             engineforce += CAR_ENGINE_FORCE*-1
-        u = [math.cos(-1*math.radians(self.rotation)), math.sin(-1*math.radians(self.rotation))] # unit vector
+        u = [math.cos(-1*math.radians(self.rotation)), -1*math.sin(math.radians(self.rotation))] # unit vector
         thrust = [u[0]*engineforce, u[1]*engineforce] # F traction -> forward
         v = [self.velocity_x, self.velocity_y] # velocity vector
         speed = math.sqrt(v[0]**2 + v[1]**2) # current speed
@@ -63,22 +79,31 @@ class Car(PhysicalObject):
         self.velocity_y = self.velocity_y + dt * a[1]
         self.velocity_r = self.velocity_r + dt * ra
         
-        if(self.score-self.getScore() <-.9):
+        if(self.score-self.getScore() <-.97):
             self.rotations -= 1
-        if(self.score-self.getScore() >.9):
+        if(self.score-self.getScore() >.97):
             self.rotations += 1
         self.score = self.getScore()
-        print(self.getDistance())
+        self.dt = dt
 
 
     def getScore(self):
         return self.rotations + (((math.atan2((self.y-(720/2)),(self.x-(1280/2)))*(180/math.pi))+180)) / 360
 
     def getDistance(self):
-        return math.sqrt((self.y-(720/2))**2 + (self.x-(1280/2))**2)
+        return math.sqrt((self.y-(720/2))**2 + (self.x-(1280/2))**2)/10
 
     def getSpeed(self):
-        return math.sqrt((self.velocity_x)**2 + (self.velocity_y)**2)
+        return math.sqrt((self.velocity_x)**2 + (self.velocity_y)**2)/10
+
+    def getRotationSpeed(self):
+        return self.velocity_r/10
+    
+    def getDT(self):
+        return self.dt
+
+    def getRotation(self):
+        return ((self.rotation) + (((math.atan2((self.y-(720/2)),(self.x-(1280/2)))*(180/math.pi))+180))) % 360
 
     def reset(self,_y,_x):
         self.x = _x
@@ -87,3 +112,4 @@ class Car(PhysicalObject):
         self.velocity_y = 0
         self.velocity_r = 0
         self.rotation = 0
+        self.rotations = 0
