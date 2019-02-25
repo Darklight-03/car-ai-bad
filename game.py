@@ -18,134 +18,12 @@ class Game:
     scores = []
     y = []
     def start(self):
-        def update(dt,batch):
-            if(dt>2):
-                dt = 2
 
-            if(self.done):
-                self.done = False
-                player_car.reset(200,200)
-                distance = player_car.getDistance()
-                speed = player_car.getSpeed()
-                rotationspeed = player_car.getRotationSpeed()
-                rotation = player_car.getRotation()
-                self.ob = np.array([distance,speed,rotationspeed,rotation])
-                self.ob = self.ob.reshape(4)
-            action = RL.choose_action(self.ob)
-            player_car.action(action)
-
-            for obj in game_objects:
-                obj.update(dt,batch)
-            player_car.actionreset()
-            
-            reward = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)# - self.score
-            self.score = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)
-            self.r = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)
-
-            _distance = player_car.getDistance()
-            _speed = player_car.getSpeed()
-            _rotationspeed = player_car.getRotationSpeed()
-            _rotation = player_car.getRotation()
-            _ob = np.array([_distance,_speed,_rotationspeed,_rotation])
-            _ob = _ob.reshape(4)
-            if(self.ob[0]>100):
-                self.done = True
-                self.attempt += 1
-                reward-=1
-            RL.store_transition(self.ob,action,reward,_ob)
-            if (self.step > 200) and (self.step % 5 == 0):
-                RL.learn()
-            #if(self.step%100==0):
-            #    print(action,ob)
-            #    print(player_car.getScore(),reward,episode)
-
-
-
-            self.ob = _ob
-
-            if self.done:
-                
-                print("done")
-                print(player_car.getScore())
-            self.step+=1
         
         def updateh(dt,batch):
             for obj in game_objects:
-                obj.update(1/30.0,batch)
+                obj.update(dt,batch)
             self.r = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)
-
-
-        def updatel(dt,batch):
-            if(self.r != True):
-                learn(dt,batch)
-                self.r = True
-            else:
-                print("E")
-
-        def learn(dt,batch):
-            self.step = 0
-            for episode in range(2500):
-                self.done = False
-                player_car.reset(200,200)
-                distance = player_car.getDistance()
-                speed = player_car.getSpeed()
-                rotationspeed = player_car.getRotationSpeed()
-                rotation = player_car.getRotation()
-                self.ob = np.array([distance,speed,rotationspeed,rotation])
-                self.ob = self.ob.reshape(4)
-                
-                while True:
-                    action = RL.choose_action(self.ob)
-                    
-                    player_car.action(action)
-                    updateh(1/144,batch)
-                    player_car.actionreset()
-                    
-                    reward = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5) - self.score
-                    #print(reward)
-                    self.score = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)
-                    self.r = (player_car.getScore() + -1*(player_car.getDistance()/100.0)*.5)
-                    _distance = player_car.getDistance()
-                    _speed = player_car.getSpeed()
-                    _rotationspeed = player_car.getRotationSpeed()
-                    _rotation = player_car.getRotation()
-                    _ob = np.array([_distance,_speed,_rotationspeed,_rotation])
-                    _ob = _ob.reshape(4)
-                    if(self.ob[0]>100):
-                        self.done = True
-                        self.attempt += 1
-                    ee = self.score
-                    while(ee>0.3):
-                        reward+=0.5
-                        ee-=0.3
-                    eee = self.ob[0]
-                    while(eee>50):
-                        reward-=1
-                        eee-=20
-                    RL.store_transition(self.ob,action,reward,_ob)
-                    if (self.step > 200) and (self.step % 5 == 0):
-                        RL.learn()
-                    #if(self.step%100==0):
-                    #    print(action,self.ob)
-                    #    print(player_car.getScore(),reward,episode)
-
-
-
-                    self.ob = _ob
-
-                    if self.done:
-                        print(player_car.getScore(),episode)
-                        self.scores.append(player_car.getScore())
-                        self.y.append(episode)
-                        break
-                    self.step+=1
-            pyglet.clock.schedule_interval(update,1/144.0,batch)
-            plt.plot (self.y,self.scores)
-            plt.ylabel('end point')
-            plt.xlabel('attempt #')
-            plt.show()
-            plt.clf()
-            RL.plot_cost()
 
                     
 
@@ -202,7 +80,6 @@ class Game:
                       memory_size=2,
                       # output_graph=True
                       )
-        #pyglet.clock.schedule_interval(update,1/144.0,batch)
-        pyglet.clock.schedule_once(learn,1/144.0,batch)
-        #pyglet.clock.schedule_interval(updateh,1/144.0,batch)
+
+        pyglet.clock.schedule_interval(updateh,1/144.0,batch)
         pyglet.app.run()
