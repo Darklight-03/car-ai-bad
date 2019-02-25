@@ -14,13 +14,13 @@ class Car(PhysicalObject):
         self.lines = kwargs['batch'].add(2, pyglet.gl.GL_LINES, None, ('v2d',(self.x,self.y,self.x+(u[0]*500),self.y+(u[1]*500))))
 
     def action(self,action):
-        if(action == 'u'):
+        if(action == 1):
             self.keys['up']=True
-        elif(action == 'l'):
+        elif(action == 2):
             self.keys['left']=True
-        elif(action == 'r'):
+        elif(action == 3):
             self.keys['right']=True
-        elif(action == 'd'):
+        elif(action == 4):
             self.keys['down']=True
 
     def actionreset(self):
